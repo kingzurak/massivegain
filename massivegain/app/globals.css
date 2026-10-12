@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* ---- MassiveGain.ng design tokens ----
+     Change these values to re-theme the entire application. */
+
+  /* Primary brand navy scale */
+  --color-navy-950: #081426;
+  --color-navy-900: #0b1f3a;
+  --color-navy-800: #122a4d;
+  --color-navy-700: #17335c;
+  --color-navy-600: #234878;
+
+  /* Accent red scale (use sparingly: CTAs, highlights, active/selected states) */
+  --color-red-700: #a91831;
+  --color-red-600: #d7263d;
+  --color-red-500: #e04a5f;
+  --color-red-100: #fbe6e9;
+
+  /* Neutral surfaces */
+  --color-surface: #ffffff;
+  --color-surface-muted: #f6f7fa;
+  --color-border: #e3e6ec;
+
+  /* Text */
+  --color-ink: #10161f;
+  --color-ink-muted: #4b5563;
+  --color-ink-soft: #7c8494;
+
+  /* Fonts */
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-body: "Manrope", system-ui, sans-serif;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+}
+
+::selection {
+  background-color: var(--color-red-100);
+  color: var(--color-navy-900);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-red-600);
+  outline-offset: 2px;
+}
+
+.container-page {
+  max-width: 1180px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .container-page {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
