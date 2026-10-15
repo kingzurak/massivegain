@@ -118,7 +118,7 @@ export default function HomePage() {
                   A growing catalogue of marketing services, organised by the platform they support.
                 </p>
               </div>
-              <Link href="/services" className="text-sm font-medium text-brick-600 hover:text-brick-700">
+              <Link href="/register" className="text-sm font-medium text-brick-600 hover:text-brick-700">
                 See all services
               </Link>
             </div>
@@ -128,12 +128,10 @@ export default function HomePage() {
                 return (
                   <Link
                     key={category}
-                    href="/services"
+                    href="/register"
                     className="rounded-lg border border-surface-border bg-surface p-5 transition-colors hover:border-navy-600"
                   >
                     <p className="text-base font-medium text-ink">{category}</p>
-                    <p className="mt-1 text-sm text-ink-soft">
-                      {count} {count === 1 ? "service" : "services"}
                     </p>
                   </Link>
                 );
