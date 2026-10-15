@@ -4,7 +4,7 @@ import { useState, FormEvent } from "react";
 import Button from "@/components/ui/Button";
 import FormField from "@/components/ui/FormField";
 
-const MIN_NAIRA = 100;
+const MIN_NAIRA = 1000;
 const MAX_NAIRA = 1_000_000;
 
 export default function FundWalletForm() {
