@@ -40,7 +40,7 @@ No `robots.txt`, `sitemap.xml`, or custom favicon exist anywhere in the project 
 ## 6. Rollback plan — know this *before* you need it
 
 - [ ] **Code**: Vercel keeps every deployment — Project → Deployments → pick a previous one → "Promote to Production" rolls back instantly, no rebuild needed.
-- [ ] **Database is NOT automatically rolled back with it.** If a deploy that included a `schema.sql` change causes a problem, rolling back the Vercel deployment reverts the *code* but not the *database* — the old code would now be running against a newer schema than it expects. Before rolling back code that shipped alongside a schema change, think through whether the schema change itself needs reverting too (rarely as simple as a single `DROP` — check what the migration actually did first).
+- [ ] **Database is NOT automatically rolled back with it.** If a deploy that included a schema change causes a problem, rolling back the Vercel deployment reverts the *code* but not the *database* — the old code would now be running against a newer schema than it expects. Run `select version, name, applied_at from supabase_migrations.applied_migrations order by version;` to see exactly which migrations this database has, then check the matching files under `supabase/migrations/` (and the baseline `supabase/schema.sql`) before deciding what needs reverting — rarely as simple as a single `DROP`, and never edit an already-applied migration file, add a new one.
 
 ## 7. Ongoing — what to periodically check, not just once
 

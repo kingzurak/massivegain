@@ -71,7 +71,10 @@ Never commit `.env.local`.
 `supabase/schema.sql` is the complete, idempotent schema: tables, RLS
 policies, and the SECURITY DEFINER functions that own every wallet, order
 and transaction write. Run it top-to-bottom in the Supabase SQL editor for
-a new project.
+a new project. That file is the **baseline** and is not edited after the
+fact — later schema changes are appended to the database as ordered,
+self-recording files under `supabase/migrations/` (see its README for the
+convention and how to apply them to an existing project).
 
 ## Deployment & testing
 
