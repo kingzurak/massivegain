@@ -15,6 +15,22 @@
 
 begin;
 
+-- 0. The migration ledger is normally created by
+--    20261019000000_migration_tracking.sql, but this file is written to be
+--    safe to paste on its own: without the ledger, the self-record at the
+--    bottom would error and roll back every change above it. Re-creating it
+--    here is idempotent (same DDL and grants as the tracking migration).
+create schema if not exists supabase_migrations;
+revoke all on schema supabase_migrations from public, anon, authenticated;
+
+create table if not exists supabase_migrations.applied_migrations (
+  version text primary key,
+  name text not null default '',
+  applied_at timestamptz not null default now()
+);
+
+alter table supabase_migrations.applied_migrations enable row level security;
+
 -- 1. Link each service to its upstream bestclout service and remember what
 --    the provider charges. All nullable: manually fulfilled services have
 --    none of this.
@@ -59,9 +75,13 @@ create index if not exists orders_provider_sync_idx
 insert into public.system_settings (key, value) values ('bestclout_markup_percent', '30')
 on conflict (key) do nothing;
 
--- 4. Record this migration (convention — see supabase/migrations/README.md).
-insert into supabase_migrations.applied_migrations (version, name)
-values ('20261020000000', 'bestclout_provider')
+-- 4. Record the baseline and this migration (convention — see
+--    supabase/migrations/README.md). The tracking migration is recorded too
+--    because step 0 above has now provided the same ledger it would have.
+insert into supabase_migrations.applied_migrations (version, name) values
+  ('0000_baseline', 'supabase/schema.sql'),
+  ('20261019000000', 'migration_tracking'),
+  ('20261020000000', 'bestclout_provider')
 on conflict (version) do nothing;
 
 commit;
