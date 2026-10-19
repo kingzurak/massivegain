@@ -17,6 +17,8 @@ var that isn't here.
 | `NEXT_PUBLIC_SITE_URL` | Yes | `http://localhost:3000` | `https://<your-production-domain>` | — |
 | `UPSTASH_REDIS_REST_URL` | **No — server only** | Your Upstash database's REST URL | Same, or a separate prod database (see below) | Upstash dashboard → your database → REST API |
 | `UPSTASH_REDIS_REST_TOKEN` | **No — server only** | Matching REST token | Same | Same page |
+| `BESTCLOUT_API_KEY` | **No — server only** | Your bestclout API key | Same key, or a separate bestclout account for production | bestclout account panel → API |
+| `CRON_SECRET` | **No — server only** | Any long random string (e.g. `openssl rand -hex 32`) | A **different** long random string | Generate yourself. Vercel Cron sends it as `Authorization: Bearer <CRON_SECRET>` to `/api/cron/sync-orders`; without it that route refuses to run |
 
 ## 2. One decision to make before anything else: separate Supabase projects?
 
@@ -86,5 +88,18 @@ route.
 ## 8. Secret hygiene, before you flip the switch
 
 - [ ] `.env.local` was never committed (already in `.gitignore` since Milestone 1 — worth a final `git log --all --full-history -- .env.local` to be sure)
-- [ ] If `SUPABASE_SERVICE_ROLE_KEY` or `PAYSTACK_SECRET_KEY` were ever pasted into a chat, ticket, or shared doc during development, rotate them before launch
+- [ ] If `SUPABASE_SERVICE_ROLE_KEY`, `PAYSTACK_SECRET_KEY` or `BESTCLOUT_API_KEY` were ever pasted into a chat, ticket, or shared doc during development, rotate them before launch
 - [ ] Confirm no `console.log` anywhere prints a secret (the Paystack/webhook routes log error *messages* on failure, never key values — worth a final skim if you've added any debug logging of your own)
+
+## 9. bestclout fulfilment provider
+
+`bestclout.com` is the first real fulfilment provider (the `manual` stub
+still exists for services that aren't mapped). Its panel currency is
+**NGN**, so no FX conversion exists anywhere — imported prices are the
+provider's NGN rate plus the markup in `system_settings.bestclout_markup_percent`.
+
+- [ ] Set `BESTCLOUT_API_KEY` and `CRON_SECRET` in Vercel (Production; a *different* `CRON_SECRET` for Preview/Development if you set one there)
+- [ ] Confirm the `vercel.json` cron is registered — Project → **Cron Jobs** should list `/api/cron/sync-orders`. The checked-in schedule is daily (`0 3 * * *`) because Hobby plans restrict cron frequency; raise it on a Pro plan if you want faster status updates. The admin **Providers → Sync order statuses** button works regardless.
+- [ ] In `/admin/providers`, confirm the balance reads (it's in NGN) and import the catalogue. **Imported services land inactive** — review prices, then activate them in `/admin/services`.
+- [ ] Only **Default**-type bestclout services auto-fulfil. Custom Comments / Comment Likes / Comment Replies / Package services are never imported or sent upstream — fulfil those by hand in `/admin/orders`.
+- [ ] When bestclout cancels an order, the sync flags it **“refund due”** in `/admin/orders`. It does **not** auto-refund (the refund function requires an admin session) — open the order and cancel it there to refund the customer.

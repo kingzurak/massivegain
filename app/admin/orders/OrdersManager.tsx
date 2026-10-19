@@ -107,6 +107,7 @@ export default function OrdersManager({ orders }: { orders: AdminOrderRow[] }) {
             <TH>Order</TH>
             <TH>Customer</TH>
             <TH>Service</TH>
+            <TH>Provider</TH>
             <TH>Quantity</TH>
             <TH>Amount</TH>
             <TH>Date</TH>
@@ -123,12 +124,14 @@ export default function OrdersManager({ orders }: { orders: AdminOrderRow[] }) {
                 <div className="text-xs text-ink-soft">{order.buyerEmail}</div>
               </TD>
               <TD>{order.service?.name ?? "—"}</TD>
+              <TD className="capitalize">{order.provider}</TD>
               <TD>{order.quantity.toLocaleString()}</TD>
               <TD>{formatNaira(order.amount)}</TD>
               <TD>{order.created_at.slice(0, 10)}</TD>
               <TD>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge status={order.status} />
+                  {order.refund_required && <Badge status="suspended" label="refund due" />}
                   <select
                     className={cn(selectClass, busyId === order.id && "opacity-50")}
                     value={order.status}

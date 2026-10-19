@@ -47,6 +47,9 @@ No `robots.txt`, `sitemap.xml`, or custom favicon exist anywhere in the project 
 - [ ] **Supabase dashboard → Usage** — database size, API requests, auth users — against your plan's limits, especially once real traffic starts
 - [ ] **Paystack dashboard → Transactions** — periodically reconcile against your own `transactions` table (`select sum(amount) from transactions where type = 'funding' and status = 'success';`) to catch anything that settled on Paystack's side but didn't make it into your database
 - [ ] **Upstash dashboard** — request volume against your plan's quota
+- [ ] **bestclout balance** (`/admin/providers`) — orders fail upstream when the provider account runs dry; top it up before that
+- [ ] **Orders flagged “refund due”** (`/admin/orders`) — the sync flags these when bestclout cancels an order, but refunding the customer is still an admin action
+- [ ] **Vercel → Cron Jobs** — confirm `/api/cron/sync-orders` is running (and succeeding) on its schedule
 
 ## 8. Launch sign-off
 

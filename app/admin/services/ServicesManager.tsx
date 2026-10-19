@@ -228,6 +228,7 @@ export default function ServicesManager({
             <TRow>
               <TH>Service</TH>
               <TH>Category</TH>
+              <TH>Provider</TH>
               <TH>Price / 1,000</TH>
               <TH>Min / Max</TH>
               <TH>Status</TH>
@@ -239,6 +240,7 @@ export default function ServicesManager({
               <TRow key={service.id}>
                 <TD className="font-medium">{service.name}</TD>
                 <TD>{service.category?.name ?? "Uncategorized"}</TD>
+                <TD className="capitalize">{service.provider}</TD>
                 <TD>{formatNaira(service.price_per_thousand)}</TD>
                 <TD>
                   {service.min_quantity.toLocaleString()} / {service.max_quantity.toLocaleString()}
