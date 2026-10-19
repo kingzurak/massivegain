@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getActiveSession } from "@/lib/auth";
 import { initializePaystackTransaction } from "@/lib/paystack";
 import { walletFundingLimiter, rateLimitResponse } from "@/lib/rate-limit";
 import { MIN_DEPOSIT_NAIRA as MIN_NAIRA, MAX_DEPOSIT_NAIRA as MAX_NAIRA } from "@/lib/utils";
@@ -9,26 +9,25 @@ import { MIN_DEPOSIT_NAIRA as MIN_NAIRA, MAX_DEPOSIT_NAIRA as MAX_NAIRA } from "
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  // 1. Must be a logged-in user (verified server-side, not from the request body).
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user || !user.email) {
-    return NextResponse.json({ error: "Please log in to fund your wallet." }, { status: 401 });
+  // 1. Must be a logged-in, active user (verified server-side, not from the
+  // request body). Suspended accounts must not start new payments even if
+  // their login session is still technically valid.
+  const session = await getActiveSession();
+  if (!session.ok) {
+    return NextResponse.json(
+      {
+        error:
+          session.reason === "unauthenticated"
+            ? "Please log in to fund your wallet."
+            : "This account can't fund a wallet.",
+      },
+      { status: session.reason === "unauthenticated" ? 401 : 403 }
+    );
   }
 
-  // Suspended (or otherwise non-active) accounts must not start new payments,
-  // even if their login session is still technically valid.
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("status")
-    .eq("id", user.id)
-    .single<{ status: string }>();
-
-  if (!profile || profile.status !== "active") {
-    return NextResponse.json({ error: "This account can't fund a wallet." }, { status: 403 });
+  const { user } = session;
+  if (!user.email) {
+    return NextResponse.json({ error: "Please log in to fund your wallet." }, { status: 401 });
   }
 
   const { success, reset } = await walletFundingLimiter.limit(user.id);

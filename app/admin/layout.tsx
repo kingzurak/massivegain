@@ -35,7 +35,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .eq("id", user.id)
     .single<Pick<Profile, "full_name" | "email" | "role" | "status">>();
 
-  if (profile?.status === "suspended") {
+  if (profile?.status !== "active") {
     redirect("/auth/suspended");
   }
 

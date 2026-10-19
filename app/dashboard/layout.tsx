@@ -35,7 +35,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .eq("id", user.id)
     .single<Pick<Profile, "full_name" | "email" | "status">>();
 
-  if (profile?.status === "suspended") {
+  if (profile?.status !== "active") {
     redirect("/auth/suspended");
   }
 

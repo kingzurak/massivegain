@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getActiveSession } from "@/lib/auth";
 import { getProvider } from "@/lib/providers";
 import { orderPlacementLimiter, rateLimitResponse } from "@/lib/rate-limit";
 import type { PlaceOrderResult, Service } from "@/lib/supabase/types";
@@ -21,26 +21,21 @@ export const runtime = "nodejs";
  * client that does the actual writes.
  */
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Log in to place an order." }, { status: 401 });
+  // Logged in and not suspended — verified server-side, from the session
+  // cookie, never from the request body.
+  const session = await getActiveSession();
+  if (!session.ok) {
+    return NextResponse.json(
+      {
+        error:
+          session.reason === "unauthenticated"
+            ? "Log in to place an order."
+            : "This account can't place orders.",
+      },
+      { status: session.reason === "unauthenticated" ? 401 : 403 }
+    );
   }
-
-  // Suspended (or otherwise non-active) accounts must not be able to spend
-  // money, even if their login session is still technically valid.
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("status")
-    .eq("id", user.id)
-    .single<{ status: string }>();
-
-  if (!profile || profile.status !== "active") {
-    return NextResponse.json({ error: "This account can't place orders." }, { status: 403 });
-  }
+  const user = session.user;
 
   const { success, reset } = await orderPlacementLimiter.limit(user.id);
   if (!success) {
