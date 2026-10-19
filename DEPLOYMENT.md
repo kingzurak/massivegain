@@ -39,6 +39,7 @@ which Supabase project is "production."
 ## 3. Supabase production setup
 
 - [ ] Run the complete `supabase/schema.sql` against the production project (SQL Editor → paste the whole file)
+- [ ] **Then run `supabase/verify.sql`** (read-only) and check every `EXPECTED` note in its comments — in particular that `place_order` has exactly one 5-argument signature, that it is `service_role`-only, and that RLS is enabled on every table. This is the safety net for a partial or out-of-order paste, which is otherwise silent.
 - [ ] **Authentication → URL Configuration** → set **Site URL** to your real production domain, and add it to **Redirect URLs**. This is the single most commonly missed step — if skipped, email confirmation and any auth redirect links will point back to `localhost` for real users.
 - [ ] **Authentication → Providers → Email** → confirm your choice on email confirmation (on/off) matches what you tested
 - [ ] Promote your own account to admin via SQL Editor (documented in `schema.sql` comments near `protect_profile_role`) — you need at least one working admin on the production database, separate from any dev-project admin

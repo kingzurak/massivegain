@@ -71,7 +71,10 @@ Never commit `.env.local`.
 `supabase/schema.sql` is the complete, idempotent schema: tables, RLS
 policies, and the SECURITY DEFINER functions that own every wallet, order
 and transaction write. Run it top-to-bottom in the Supabase SQL editor for
-a new project.
+a new project, then run `supabase/verify.sql` (read-only) to confirm the
+privileges and RLS policies actually landed. The final HARDENING section of
+`schema.sql` re-asserts the service-role-only grants, so a partial paste
+can't silently leave a hole open.
 
 ## Deployment & testing
 

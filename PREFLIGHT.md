@@ -60,6 +60,7 @@ Each step: **what to do → what you should see → how to independently verify 
 2. As admin, cancel it via the status dropdown.
 3. Confirm: customer's wallet balance goes back up by the full order amount; referrer's commission is reversed (check `/dashboard/referrals` → commission history shows a negative entry).
 4. **Verify in SQL**: `select status from referral_commissions where order_id = '<that order id>';` → `reversed`.
+5. Try to move the **completed** order from Step 5 back to Processing via the dropdown → confirm it is **rejected** (completed orders are terminal; only the status dropdown attempt should fail, nothing should change).
 
 ## 7. Suspension enforcement
 
@@ -71,7 +72,7 @@ Each step: **what to do → what you should see → how to independently verify 
 ## 8. Access control spot checks
 
 1. While logged in as the (non-admin) second account, try `/admin` directly → confirm redirect to `/dashboard`.
-2. In the browser console on that account, try `await supabase.rpc('place_order', {...})` directly → confirm it fails with a permission error (closed in Milestone 9).
+2. In the browser console on that account, try `await supabase.rpc('place_order', {...})` directly → confirm it fails with a permission error (closed in Milestone 9). If it succeeds, stop and run `supabase/verify.sql` — a partial `schema.sql` run left an old overload or grant in place.
 3. Try the same for `cancel_order_with_refund` → confirm `not_authorized` outcome, not an actual cancellation.
 
 ## 9. Rate limiting

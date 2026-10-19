@@ -1320,6 +1320,8 @@ $$;
 --     - status can never transition to or from 'cancelled' directly;
 --       only cancel_order_with_refund() may do that, via a transaction-
 --       local flag it sets right before its own update.
+--     - 'completed' is terminal: once delivered, an order cannot be moved
+--       to any other status (regression to processing/pending is rejected).
 create or replace function public.guard_order_integrity()
 returns trigger
 language plpgsql
@@ -1341,6 +1343,15 @@ begin
      and coalesce(current_setting('massivegain.allow_order_cancel', true), '') <> 'on'
   then
     raise exception 'orders can only be cancelled via cancel_order_with_refund()';
+  end if;
+
+  -- A completed order is final: it has been delivered, and if the customer
+  -- was referred, its commission has already been paid out. Letting it slide
+  -- back to pending/processing (or forward to cancelled) would silently
+  -- desync status from commissions and leave no audit trail. Deliberately a
+  -- hard error rather than a silent revert, so the mistake is visible.
+  if old.status = 'completed' and new.status is distinct from 'completed' then
+    raise exception 'completed orders are final and cannot be moved to another status';
   end if;
 
   return new;
@@ -1648,3 +1659,40 @@ create index if not exists transactions_order_id_idx
 -- Milestone 5 — Postgres can use a multi-column btree's leading column
 -- for a plain equality filter, so a separate single-column index here
 -- would just add write overhead with no read benefit. Skipped on purpose.
+
+-- ---------------------------------------------------------------------------
+-- HARDENING — re-assert the security boundary (safe to re-run, must be last)
+--
+-- This section exists because the file is applied by hand, top to bottom,
+-- and a partial or out-of-order run could leave an older overload or grant
+-- in place that silently reopens a hole this file otherwise closes. Every
+-- statement here is a no-op when the schema is already correct.
+--
+-- Run supabase/verify.sql afterwards to confirm the live database matches.
+-- ---------------------------------------------------------------------------
+
+-- 42. Drop any pre-Milestone-9 place_order() overload. Both of these were
+--     once granted to authenticated, which is exactly the direct-RPC bypass
+--     Milestone 9 removed — if either survived a partial run, customers
+--     could place orders (and spend wallets) without the server route.
+drop function if exists public.place_order(uuid, integer, text);
+drop function if exists public.place_order(uuid, integer, text, text);
+
+-- 43. Re-assert that the service-role-only functions cannot be called by
+--     anon or authenticated users, no matter what happened earlier in the
+--     file (or in a hand-run snippet).
+revoke all on function public.place_order(uuid, uuid, integer, text, text) from public, anon, authenticated;
+grant execute on function public.place_order(uuid, uuid, integer, text, text) to service_role;
+
+revoke all on function public.settle_funding_success(text, numeric) from public, anon, authenticated;
+grant execute on function public.settle_funding_success(text, numeric) to service_role;
+
+revoke all on function public.mark_funding_failed(text) from public, anon, authenticated;
+grant execute on function public.mark_funding_failed(text) to service_role;
+
+revoke all on function public.grant_referral_commission(uuid, uuid, numeric) from public, anon, authenticated;
+grant execute on function public.grant_referral_commission(uuid, uuid, numeric) to service_role;
+
+-- 44. is_admin() must remain executable (the RLS policies call it), but it
+--     only ever reads the caller's own row, so it is not a hole.
+grant execute on function public.is_admin() to anon, authenticated;
