@@ -11,6 +11,7 @@ export interface AdminStats {
   totalServices: number;
   activeServices: number;
   totalOrders: number;
+  /** Order value excluding cancelled (refunded) orders. */
   totalRevenue: number;
   ordersByStatus: Record<OrderStatus, number>;
 }
@@ -38,7 +39,12 @@ export async function getAdminStats(): Promise<AdminStats> {
   let totalRevenue = 0;
   for (const order of orders) {
     ordersByStatus[order.status] = (ordersByStatus[order.status] ?? 0) + 1;
-    totalRevenue += Number(order.amount);
+    // Cancelled orders are refunded in full, so they never contributed
+    // revenue. Matches how the customer dashboard defines "total spent" —
+    // the two figures must not use different definitions of the same money.
+    if (order.status !== "cancelled") {
+      totalRevenue += Number(order.amount);
+    }
   }
 
   return {
