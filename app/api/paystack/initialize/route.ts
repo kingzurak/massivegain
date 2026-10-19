@@ -4,11 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { initializePaystackTransaction } from "@/lib/paystack";
 import { walletFundingLimiter, rateLimitResponse } from "@/lib/rate-limit";
+import { MIN_DEPOSIT_NAIRA as MIN_NAIRA, MAX_DEPOSIT_NAIRA as MAX_NAIRA } from "@/lib/utils";
 
 export const runtime = "nodejs";
-
-const MIN_NAIRA = 100;
-const MAX_NAIRA = 1_000_000;
 
 export async function POST(request: NextRequest) {
   // 1. Must be a logged-in user (verified server-side, not from the request body).
