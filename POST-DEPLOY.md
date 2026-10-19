@@ -40,13 +40,16 @@ No `robots.txt`, `sitemap.xml`, or custom favicon exist anywhere in the project 
 ## 6. Rollback plan — know this *before* you need it
 
 - [ ] **Code**: Vercel keeps every deployment — Project → Deployments → pick a previous one → "Promote to Production" rolls back instantly, no rebuild needed.
-- [ ] **Database is NOT automatically rolled back with it.** If a deploy that included a `schema.sql` change causes a problem, rolling back the Vercel deployment reverts the *code* but not the *database* — the old code would now be running against a newer schema than it expects. Before rolling back code that shipped alongside a schema change, think through whether the schema change itself needs reverting too (rarely as simple as a single `DROP` — check what the migration actually did first).
+- [ ] **Database is NOT automatically rolled back with it.** If a deploy that included a schema change causes a problem, rolling back the Vercel deployment reverts the *code* but not the *database* — the old code would now be running against a newer schema than it expects. Run `select version, name, applied_at from supabase_migrations.applied_migrations order by version;` to see exactly which migrations this database has, then check the matching files under `supabase/migrations/` (and the baseline `supabase/schema.sql`) before deciding what needs reverting — rarely as simple as a single `DROP`, and never edit an already-applied migration file, add a new one.
 
 ## 7. Ongoing — what to periodically check, not just once
 
 - [ ] **Supabase dashboard → Usage** — database size, API requests, auth users — against your plan's limits, especially once real traffic starts
 - [ ] **Paystack dashboard → Transactions** — periodically reconcile against your own `transactions` table (`select sum(amount) from transactions where type = 'funding' and status = 'success';`) to catch anything that settled on Paystack's side but didn't make it into your database
 - [ ] **Upstash dashboard** — request volume against your plan's quota
+- [ ] **bestclout balance** (`/admin/providers`) — orders fail upstream when the provider account runs dry; top it up before that
+- [ ] **Orders flagged “refund due”** (`/admin/orders`) — the sync flags these when bestclout cancels an order, but refunding the customer is still an admin action
+- [ ] **Vercel → Cron Jobs** — confirm `/api/cron/sync-orders` is running (and succeeding) on its schedule
 
 ## 8. Launch sign-off
 

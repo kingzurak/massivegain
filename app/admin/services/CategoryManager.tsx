@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import FormField from "@/components/ui/FormField";
 import Modal from "@/components/ui/Modal";
-import { createClient } from "@/lib/supabase/client";
 import type { Category } from "@/lib/supabase/types";
 
 export default function CategoryManager({
@@ -37,14 +36,16 @@ export default function CategoryManager({
     }
 
     setAdding(true);
-    const supabase = createClient();
-    const { error: insertError } = await supabase.from("categories").insert({ name: trimmed });
+    const res = await fetch("/api/admin/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: trimmed }),
+    });
+    const json = await res.json().catch(() => null);
     setAdding(false);
 
-    if (insertError) {
-      setError(
-        insertError.code === "23505" ? "That category already exists." : insertError.message
-      );
+    if (!res.ok) {
+      setError(json?.error ?? "Couldn't add that category.");
       return;
     }
 
@@ -55,12 +56,16 @@ export default function CategoryManager({
   async function handleDelete(category: Category) {
     setError(null);
     setDeletingId(category.id);
-    const supabase = createClient();
-    const { error: deleteError } = await supabase.from("categories").delete().eq("id", category.id);
+    const res = await fetch("/api/admin/categories", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: category.id }),
+    });
+    const json = await res.json().catch(() => null);
     setDeletingId(null);
 
-    if (deleteError) {
-      setError(deleteError.message);
+    if (!res.ok) {
+      setError(json?.error ?? "Couldn't delete that category.");
       return;
     }
     router.refresh();

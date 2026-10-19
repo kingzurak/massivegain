@@ -6,7 +6,6 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 import { Table, THead, TRow, TH, TD } from "@/components/ui/Table";
-import { createClient } from "@/lib/supabase/client";
 import { formatNaira } from "@/lib/utils";
 import type { Profile } from "@/lib/supabase/types";
 
@@ -28,16 +27,18 @@ export default function UsersManager({
   async function handleToggleStatus(u: AdminUserRow) {
     setError(null);
     setBusyId(u.id);
-    const supabase = createClient();
     const nextStatus = u.status === "active" ? "suspended" : "active";
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({ status: nextStatus })
-      .eq("id", u.id);
+
+    const res = await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: u.id, status: nextStatus }),
+    });
+    const json = await res.json().catch(() => null);
     setBusyId(null);
 
-    if (updateError) {
-      setError(updateError.message);
+    if (!res.ok) {
+      setError(json?.error ?? "Couldn't update that account.");
       return;
     }
     router.refresh();

@@ -10,6 +10,13 @@ export interface ProviderOrderInput {
   orderNumber: string;
   link: string | null;
   quantity: number;
+  /** The upstream provider's service id. Null for services with no mapping. */
+  providerServiceId: string | null;
+  /**
+   * The upstream service type (e.g. "Default", "Custom Comments"). Only
+   * "Default" is ever auto-fulfilled; the rest are handled by hand.
+   */
+  serviceType: string | null;
 }
 
 export interface ProviderOrderResult {
@@ -24,6 +31,8 @@ export interface ProviderStatusResult {
   status: "pending" | "processing" | "completed" | "cancelled" | "unknown";
   startCount?: number | null;
   remains?: number | null;
+  /** The provider's raw status text, kept verbatim for the admin UI. */
+  rawStatus?: string | null;
 }
 
 export interface ProviderActionResult {

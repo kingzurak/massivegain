@@ -58,7 +58,24 @@ API routes (server-only, all rate limited):
 
 - `/api/orders/place`
 - `/api/paystack/initialize`, `/api/paystack/callback`, `/api/paystack/webhook`
+- `/api/admin/*` — admin mutations, each guarded by an explicit admin check
+  plus RLS (`orders`, `orders/cancel`, `orders/fulfilment`, `users`,
+  `services`, `categories`, `settings`, `providers`, `providers/import`,
+  `providers/sync`)
+- `/api/cron/sync-orders` — polls the fulfilment provider for open order
+  statuses; requires `Authorization: Bearer $CRON_SECRET` (Vercel Cron sends
+  this automatically)
 - `/auth/signout`, `/auth/suspended`
+
+## Fulfilment providers
+
+Services are fulfilled by a provider chosen per-service (`services.provider`).
+`manual` does nothing and leaves the order for an admin; `bestclout` submits
+Default-type services to [bestclout.com](https://bestclout.com) and polls
+their status. Map the catalogue from `/admin/providers` — imports land
+inactive, and only Default-type services auto-fulfil. bestclout bills in
+NGN, so there is no currency conversion; the markup lives in
+`system_settings.bestclout_markup_percent`.
 
 ## Environment variables
 
@@ -71,7 +88,10 @@ Never commit `.env.local`.
 `supabase/schema.sql` is the complete, idempotent schema: tables, RLS
 policies, and the SECURITY DEFINER functions that own every wallet, order
 and transaction write. Run it top-to-bottom in the Supabase SQL editor for
-a new project.
+a new project. That file is the **baseline** and is not edited after the
+fact — later schema changes are appended to the database as ordered,
+self-recording files under `supabase/migrations/` (see its README for the
+convention and how to apply them to an existing project).
 
 ## Deployment & testing
 

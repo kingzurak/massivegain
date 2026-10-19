@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import FormField from "@/components/ui/FormField";
-import { createClient } from "@/lib/supabase/client";
 import type { AdminOrderRow } from "./OrdersManager";
 
 export default function FulfilmentModal({
@@ -29,20 +28,22 @@ export default function FulfilmentModal({
     setError(null);
     setSaving(true);
 
-    const supabase = createClient();
-    const { error: updateError } = await supabase
-      .from("orders")
-      .update({
-        external_order_id: externalOrderId.trim() || null,
-        start_count: startCount.trim() ? Number(startCount) : null,
-        link: link.trim() || null,
-        admin_notes: notes,
-      })
-      .eq("id", order.id);
+    const res = await fetch("/api/admin/orders/fulfilment", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        orderId: order.id,
+        externalOrderId: externalOrderId.trim(),
+        startCount: startCount.trim(),
+        link: link.trim(),
+        adminNotes: notes,
+      }),
+    });
+    const json = await res.json().catch(() => null);
     setSaving(false);
 
-    if (updateError) {
-      setError(updateError.message);
+    if (!res.ok) {
+      setError(json?.error ?? "Couldn't save those details.");
       return;
     }
     router.refresh();

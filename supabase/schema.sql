@@ -1,6 +1,13 @@
 -- MassiveGain.ng — Milestone 2 database foundation
 -- Run this once in the Supabase SQL editor (Dashboard → SQL Editor → New query).
 -- Safe to re-run: guarded with IF NOT EXISTS / OR REPLACE where possible.
+--
+-- This file is the BASELINE: the state of the schema when migration
+-- tracking was introduced, applied in one paste. Schema changes from here
+-- on go in their own ordered, self-recording files under
+-- supabase/migrations/ rather than being appended below — see
+-- supabase/migrations/README.md for the convention and how to apply a
+-- change to an already-provisioned database.
 
 -- ---------------------------------------------------------------------------
 -- 1. profiles table

@@ -1,8 +1,10 @@
 import type { FulfilmentProvider } from "./types";
 import { manualProvider } from "./manual";
+import { bestcloutProvider } from "./bestclout";
 
 const registry: Record<string, FulfilmentProvider> = {
   manual: manualProvider,
+  bestclout: bestcloutProvider,
 };
 
 /**

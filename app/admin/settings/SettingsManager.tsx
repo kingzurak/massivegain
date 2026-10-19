@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import FormField from "@/components/ui/FormField";
-import { createClient } from "@/lib/supabase/client";
 
 export default function SettingsManager({ initialRate }: { initialRate: string }) {
   const router = useRouter();
@@ -26,15 +25,16 @@ export default function SettingsManager({ initialRate }: { initialRate: string }
     }
 
     setSaving(true);
-    const supabase = createClient();
-    const { error: updateError } = await supabase
-      .from("system_settings")
-      .update({ value: String(value) })
-      .eq("key", "referral_commission_rate");
+    const res = await fetch("/api/admin/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "referral_commission_rate", value }),
+    });
+    const json = await res.json().catch(() => null);
     setSaving(false);
 
-    if (updateError) {
-      setError(updateError.message);
+    if (!res.ok) {
+      setError(json?.error ?? "Couldn't save that setting.");
       return;
     }
     setSaved(true);

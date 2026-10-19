@@ -103,9 +103,9 @@ export async function POST(request: NextRequest) {
     try {
       const { data: service } = await admin
         .from("services")
-        .select("provider")
+        .select("provider, provider_service_id, provider_service_type, provider_rate")
         .eq("id", serviceId)
-        .single<Pick<Service, "provider">>();
+        .single<Pick<Service, "provider" | "provider_service_id" | "provider_service_type" | "provider_rate">>();
 
       const provider = getProvider(service?.provider ?? "manual");
       const result = await provider.createOrder({
@@ -113,14 +113,24 @@ export async function POST(request: NextRequest) {
         orderNumber: data.order_number ?? "",
         link,
         quantity,
+        providerServiceId: service?.provider_service_id ?? null,
+        serviceType: service?.provider_service_type ?? null,
       });
 
       if (result.status === "submitted" && result.externalOrderId) {
+        // Snapshot what the provider charges (NGN) so margin is auditable
+        // even after the service's rate changes.
+        const providerCost =
+          service?.provider_rate != null
+            ? Math.round((service.provider_rate * quantity) / 10) / 100
+            : null;
+
         await admin
           .from("orders")
           .update({
             external_order_id: result.externalOrderId,
             start_count: result.startCount,
+            provider_cost: providerCost,
             status: "processing",
           })
           .eq("id", data.order_id);

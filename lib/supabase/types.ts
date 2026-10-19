@@ -36,6 +36,9 @@ export interface Service {
   max_quantity: number;
   active: boolean;
   provider: string;
+  provider_service_id: string | null;
+  provider_rate: number | null;
+  provider_service_type: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -85,6 +88,10 @@ export interface Order {
   start_count: number | null;
   link: string | null;
   admin_notes: string;
+  provider_cost: number | null;
+  provider_status: string | null;
+  provider_synced_at: string | null;
+  refund_required: boolean;
   created_at: string;
   updated_at: string;
 }
