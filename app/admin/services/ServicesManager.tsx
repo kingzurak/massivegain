@@ -8,7 +8,6 @@ import FormField from "@/components/ui/FormField";
 import Modal from "@/components/ui/Modal";
 import EmptyState from "@/components/ui/EmptyState";
 import { Table, THead, TRow, TH, TD } from "@/components/ui/Table";
-import { createClient } from "@/lib/supabase/client";
 import { formatNaira } from "@/lib/utils";
 import type { Category, ServiceWithCategory } from "@/lib/supabase/types";
 import CategoryManager from "./CategoryManager";
@@ -54,6 +53,7 @@ export default function ServicesManager({
   const [saving, setSaving] = useState(false);
 
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [pageError, setPageError] = useState<string | null>(null);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
 
   const serviceCountByCategory = new Map<string, number>();
@@ -98,19 +98,23 @@ export default function ServicesManager({
     }
 
     setCreating(true);
-    const supabase = createClient();
-    const { error } = await supabase.from("services").insert({
-      name: name.trim(),
-      category_id: categoryId,
-      description: description.trim(),
-      price_per_thousand: priceNum,
-      min_quantity: minNum,
-      max_quantity: maxNum,
+    const res = await fetch("/api/admin/services", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: name.trim(),
+        categoryId,
+        description: description.trim(),
+        pricePerThousand: priceNum,
+        minQuantity: minNum,
+        maxQuantity: maxNum,
+      }),
     });
+    const json = await res.json().catch(() => null);
     setCreating(false);
 
-    if (error) {
-      setCreateError(error.message);
+    if (!res.ok) {
+      setCreateError(json?.error ?? "Couldn't create that service.");
       return;
     }
 
@@ -141,20 +145,22 @@ export default function ServicesManager({
     }
 
     setSaving(true);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("services")
-      .update({
-        price_per_thousand: priceNum,
-        min_quantity: minNum,
-        max_quantity: maxNum,
+    const res = await fetch("/api/admin/services", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        serviceId: editingService.id,
+        pricePerThousand: priceNum,
+        minQuantity: minNum,
+        maxQuantity: maxNum,
         active: editForm.active,
-      })
-      .eq("id", editingService.id);
+      }),
+    });
+    const json = await res.json().catch(() => null);
     setSaving(false);
 
-    if (error) {
-      setEditError(error.message);
+    if (!res.ok) {
+      setEditError(json?.error ?? "Couldn't save those changes.");
       return;
     }
 
@@ -163,10 +169,20 @@ export default function ServicesManager({
   }
 
   async function handleToggleActive(service: ServiceWithCategory) {
+    setPageError(null);
     setTogglingId(service.id);
-    const supabase = createClient();
-    await supabase.from("services").update({ active: !service.active }).eq("id", service.id);
+    const res = await fetch("/api/admin/services", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ serviceId: service.id, active: !service.active }),
+    });
     setTogglingId(null);
+
+    if (!res.ok) {
+      const json = await res.json().catch(() => null);
+      setPageError(json?.error ?? "Couldn't change that service's status.");
+      return;
+    }
     router.refresh();
   }
 
@@ -187,6 +203,12 @@ export default function ServicesManager({
           Add service
         </Button>
       </div>
+
+      {pageError && (
+        <div className="mb-4 rounded-md border border-red-200 bg-brick-100 px-3.5 py-2.5 text-sm text-brick-700">
+          {pageError}
+        </div>
+      )}
 
       {categories.length === 0 && (
         <p className="mb-4 text-xs text-ink-soft">
