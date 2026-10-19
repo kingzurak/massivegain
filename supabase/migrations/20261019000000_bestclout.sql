@@ -1,4 +1,4 @@
--- 20261020000000_bestclout_provider
+-- 20261019000000_bestclout
 --
 -- Wires the app to bestclout.com as a real fulfilment provider (the first
 -- one after the built-in `manual` stub).
@@ -78,10 +78,13 @@ on conflict (key) do nothing;
 -- 4. Record the baseline and this migration (convention — see
 --    supabase/migrations/README.md). The tracking migration is recorded too
 --    because step 0 above has now provided the same ledger it would have.
+--    This file shares the 20261019000000 timestamp with the tracking
+--    migration, so it records the full filename stem as its version to keep
+--    the ledger's primary key unique.
 insert into supabase_migrations.applied_migrations (version, name) values
   ('0000_baseline', 'supabase/schema.sql'),
   ('20261019000000', 'migration_tracking'),
-  ('20261020000000', 'bestclout_provider')
+  ('20261019000000_bestclout', 'bestclout')
 on conflict (version) do nothing;
 
 commit;
