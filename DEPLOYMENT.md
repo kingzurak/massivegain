@@ -41,7 +41,7 @@ which Supabase project is "production."
 ## 3. Supabase production setup
 
 - [ ] Run the complete `supabase/schema.sql` against the production project (SQL Editor → paste the whole file)
-- [ ] **If this database already exists**, don't re-paste everything blindly — run `supabase/migrations/20261019000000_migration_tracking.sql` once to create the ledger, then apply only the files listed in `supabase/migrations/README.md` that aren't yet in `supabase_migrations.applied_migrations`.
+- [ ] **If this database already exists**, don't re-paste everything blindly — run `supabase/migrations/1_migration_tracking.sql` once to create the ledger, then apply only the files listed in `supabase/migrations/README.md` that aren't yet in `supabase_migrations.applied_migrations`.
 - [ ] **Authentication → URL Configuration** → set **Site URL** to your real production domain, and add it to **Redirect URLs**. This is the single most commonly missed step — if skipped, email confirmation and any auth redirect links will point back to `localhost` for real users.
 - [ ] **Authentication → Providers → Email** → confirm your choice on email confirmation (on/off) matches what you tested
 - [ ] Promote your own account to admin via SQL Editor (documented in `schema.sql` comments near `protect_profile_role`) — you need at least one working admin on the production database, separate from any dev-project admin
