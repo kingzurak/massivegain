@@ -32,10 +32,17 @@ There's no external error-tracking service wired into this project (no Sentry/eq
 
 If you later want proactive alerting (not just "check logs when something's reported"), that's a real follow-up worth scoping deliberately rather than bolting on — flagging it rather than adding it silently.
 
-## 5. Found while checking — minor, non-blocking
+## 5. SEO/asset basics — now in place
 
-No `robots.txt`, `sitemap.xml`, or custom favicon exist anywhere in the project — this was never asked for in any milestone, so it was never built, not an oversight introduced now. Doesn't block launch (the site works fine without them), but worth knowing before you start caring about search visibility:
-- [ ] Decide if/when to add these — happy to build them when you want
+`app/robots.ts`, `app/sitemap.ts` and `app/icon.svg` exist, so `/robots.txt`,
+`/sitemap.xml` and the favicon are served automatically. Both build absolute
+URLs from `NEXT_PUBLIC_SITE_URL`, so:
+- [ ] Confirm `NEXT_PUBLIC_SITE_URL` is set to the production domain in the
+  Vercel **Production** scope, then open `/robots.txt` and `/sitemap.xml` and
+  check the URLs point at your real domain rather than `localhost`.
+- [ ] `/dashboard`, `/admin`, `/api` and `/auth` are disallowed in `robots.txt`;
+  the pages themselves already require auth, this just keeps them out of
+  indexes.
 
 ## 6. Rollback plan — know this *before* you need it
 
