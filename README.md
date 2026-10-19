@@ -1,42 +1,81 @@
 # MassiveGain.ng
 
-Nigerian digital marketing and social-media promotion platform.
-
-## Milestone 1 — Foundation + brand design (this build)
-
-This milestone contains **UI and layout only**. There is no real
-authentication, database, payments, or fulfilment logic yet — all data on
-screen comes from `lib/mock-data.ts` and is clearly placeholder/demo data.
+Nigerian digital marketing and social-media promotion platform: customers
+fund a naira wallet, order marketing services from a catalogue, and track
+every order from a dashboard. Admins manage services, orders, users and
+settings from a separate admin area.
 
 ## Run it
 
 ```bash
 npm install
+cp .env.example .env.local   # fill in the values (see DEPLOYMENT.md)
 npm run dev
 ```
 
 Then open http://localhost:3000
 
-## What's included
+## Stack
 
-- Next.js 14 (App Router) + TypeScript + Tailwind CSS
-- Design tokens (colors, fonts) as CSS variables in `app/globals.css`,
-  wired into `tailwind.config.ts` — change the values there to re-theme
-  the whole app centrally
-- Public pages: `/`, `/services`, `/login`, `/register`
-- Customer dashboard shell: `/dashboard`, `/dashboard/orders`,
-  `/dashboard/wallet`, `/dashboard/transactions`, `/dashboard/profile`
-- Admin shell: `/admin`, `/admin/orders`, `/admin/services`,
-  `/admin/users`, `/admin/providers`, `/admin/transactions`,
-  `/admin/statistics`
-- Reusable components in `components/ui` (Button, Card, Badge, Table,
-  Modal, LoadingState, EmptyState, ErrorState, PageHeader, FormField)
-  and `components/layout` (Navbar, Footer, Sidebar, MobileNav, TopBar)
+- **Next.js 14 (App Router) + TypeScript + Tailwind CSS**
+- **Supabase** — authentication, Postgres database, and Row Level Security.
+  RLS is enabled on every table and is the authorization boundary; see
+  `supabase/schema.sql`.
+- **Paystack** — wallet funding. Every payment is verified server-side
+  (webhook HMAC + callback re-verification) before the wallet is credited.
+- **Upstash Redis** — rate limiting on the API routes.
+- Provider fulfilment abstraction in `lib/providers` (manual fulfilment
+  today).
 
-## Not included yet (future milestones)
+Design tokens (colors, fonts) live as CSS variables in `app/globals.css`
+and are wired into `tailwind.config.ts` — change them there to re-theme the
+whole app centrally.
 
-- Supabase Auth, database schema, and Row Level Security
-- Paystack wallet funding and payment verification
-- Real order placement and status updates
-- The provider fulfilment abstraction layer
-- Any environment variables (see `.env.example` for what's coming)
+## Routes
+
+Public:
+
+- `/` — marketing home page
+- `/services` — public service catalogue (read-only; ordering requires login)
+- `/login`, `/register` (accepts `?ref=` referral links), `/suspended`
+
+Customer dashboard (`/dashboard`, requires login):
+
+- `/dashboard` — summary
+- `/dashboard/services` — catalogue and order placement
+- `/dashboard/orders`, `/dashboard/transactions`
+- `/dashboard/wallet` — fund with Paystack
+- `/dashboard/referrals` — referral link and commission history
+- `/dashboard/profile`
+
+Admin (`/admin`, requires the `admin` role):
+
+- `/admin`, `/admin/orders`, `/admin/services`, `/admin/users`,
+  `/admin/providers`, `/admin/transactions`, `/admin/statistics`,
+  `/admin/settings`
+
+API routes (server-only, all rate limited):
+
+- `/api/orders/place`
+- `/api/paystack/initialize`, `/api/paystack/callback`, `/api/paystack/webhook`
+- `/auth/signout`, `/auth/suspended`
+
+## Environment variables
+
+See `.env.example` for the full list. `DEPLOYMENT.md` documents each
+variable, where to get it, and how to scope it per Vercel environment.
+Never commit `.env.local`.
+
+## Database
+
+`supabase/schema.sql` is the complete, idempotent schema: tables, RLS
+policies, and the SECURITY DEFINER functions that own every wallet, order
+and transaction write. Run it top-to-bottom in the Supabase SQL editor for
+a new project.
+
+## Deployment & testing
+
+- `DEPLOYMENT.md` — full production setup checklist
+- `PREFLIGHT.md` — end-to-end test script (auth, funding, orders,
+  commissions, suspension, access control, rate limits)
+- `POST-DEPLOY.md` — post-deploy smoke test and rollback plan

@@ -62,6 +62,11 @@ a concern.
 Vercel has three scopes per variable: **Production**, **Preview**, **Development**.
 Set them deliberately rather than applying one value to all three:
 
+- [ ] **Project → Settings → General → Root Directory** is **empty** (`. /`
+  i.e. the repository root). The app used to live in a `massivegain/`
+  subfolder; it now sits at the repository root, so a leftover
+  `massivegain` Root Directory setting would make every deploy fail.
+
 - [ ] **Production** scope: live Paystack key, production Supabase project, production `NEXT_PUBLIC_SITE_URL`
 - [ ] **Preview**/**Development** scopes: test Paystack key, dev Supabase project — so a preview deployment (e.g. from a pull request) can never move real money or touch real customer data
 - [ ] `NEXT_PUBLIC_SITE_URL` in Preview: if left unset, `/api/paystack/initialize` and `/dashboard/referrals` both now fall back to deriving the URL from the actual incoming request (not a hardcoded guess — see note below), so this is safe to leave blank for Preview if that's more convenient

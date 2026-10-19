@@ -42,7 +42,7 @@ Each step: **what to do → what you should see → how to independently verify 
 
 ## 4. Order placement + commission payout
 
-1. As the second account, `/services` → order something, with a real link and quantity within range.
+1. As the second account, `/dashboard/services` → order something, with a real link and quantity within range.
 2. Confirm wallet balance drops by the exact order amount, order appears in `/dashboard/orders` as **Pending**.
 3. Switch to the **first** account (the referrer) → `/dashboard/referrals` → confirm "Total commissions earned" increased by 5% of that order, and it appears in the commission history.
 4. **Verify in SQL**: `select * from referral_commissions where referred_user_id = '<second account id>';` → one row, `status = 'paid'`.
