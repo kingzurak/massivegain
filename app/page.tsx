@@ -34,7 +34,7 @@ export default function HomePage() {
                 Create free account
               </Link>
               <Link
-                href="/register"
+                href="/services"
                 className="border border-gray-300 text-gray-800 font-medium px-6 py-3 rounded-lg hover:bg-gray-50 transition-colors inline-block"
               >
                 View services
@@ -55,7 +55,7 @@ export default function HomePage() {
                 A growing catalogue of marketing services, organised by the platform they support.
               </p>
             </div>
-            <Link href="/register" className="text-sm font-medium text-red-600 hover:underline">
+            <Link href="/services" className="text-sm font-medium text-red-600 hover:underline">
               See all services
             </Link>
           </div>
@@ -64,7 +64,7 @@ export default function HomePage() {
             {categories.map((category) => (
               <Link
                 key={category}
-                href="/register"
+                href="/services"
                 className="rounded-lg border border-gray-200 bg-white p-5 hover:border-red-600 transition-colors block shadow-sm"
               >
                 <p className="text-base font-medium text-gray-900">{category}</p>

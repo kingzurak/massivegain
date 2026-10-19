@@ -18,7 +18,7 @@ export default function Footer() {
         <div>
           <p className="text-sm font-medium text-white">Platform</p>
           <ul className="mt-3 space-y-2 text-sm text-white/60">
-            <li><Link href="/register" className="hover:text-white">Services</Link></li>
+            <li><Link href="/services" className="hover:text-white">Services</Link></li>
             <li><Link href="/register" className="hover:text-white">Create an account</Link></li>
             <li><Link href="/login" className="hover:text-white">Log in</Link></li>
           </ul>
