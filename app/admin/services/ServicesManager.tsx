@@ -48,7 +48,7 @@ export default function ServicesManager({
   const [creating, setCreating] = useState(false);
 
   const [editingService, setEditingService] = useState<ServiceWithCategory | null>(null);
-  const [editForm, setEditForm] = useState({ price: "", min: "", max: "", active: true });
+  const [editForm, setEditForm] = useState({ price: "", min: "", max: "", active: true, providerRate: "" });
   const [editError, setEditError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -69,6 +69,7 @@ export default function ServicesManager({
       min: String(service.min_quantity),
       max: String(service.max_quantity),
       active: service.active,
+      providerRate: service.provider_rate != null ? String(service.provider_rate) : "",
     });
   }
 
@@ -144,6 +145,14 @@ export default function ServicesManager({
       return;
     }
 
+    // Blank means "no known provider cost"; otherwise a real amount >= 0.
+    const costRaw = editForm.providerRate.trim();
+    const providerRate = costRaw === "" ? null : Number(costRaw);
+    if (providerRate !== null && (!Number.isFinite(providerRate) || providerRate < 0)) {
+      setEditError("Enter a provider cost of 0 or more, or leave it blank.");
+      return;
+    }
+
     setSaving(true);
     const res = await fetch("/api/admin/services", {
       method: "PATCH",
@@ -154,6 +163,7 @@ export default function ServicesManager({
         minQuantity: minNum,
         maxQuantity: maxNum,
         active: editForm.active,
+        providerRate,
       }),
     });
     const json = await res.json().catch(() => null);
@@ -230,18 +240,31 @@ export default function ServicesManager({
               <TH>Category</TH>
               <TH>Provider</TH>
               <TH>Price / 1,000</TH>
+              <TH>Cost / 1,000</TH>
+              <TH>Margin</TH>
               <TH>Min / Max</TH>
               <TH>Status</TH>
               <TH>Action</TH>
             </TRow>
           </THead>
           <tbody>
-            {services.map((service) => (
+            {services.map((service) => {
+              const margin =
+                service.provider_rate != null
+                  ? service.price_per_thousand - service.provider_rate
+                  : null;
+              return (
               <TRow key={service.id}>
                 <TD className="font-medium">{service.name}</TD>
                 <TD>{service.category?.name ?? "Uncategorized"}</TD>
                 <TD className="capitalize">{service.provider}</TD>
                 <TD>{formatNaira(service.price_per_thousand)}</TD>
+                <TD>
+                  {service.provider_rate != null ? formatNaira(service.provider_rate) : "—"}
+                </TD>
+                <TD className={margin != null && margin < 0 ? "font-medium text-brick-700" : ""}>
+                  {margin != null ? formatNaira(margin) : "—"}
+                </TD>
                 <TD>
                   {service.min_quantity.toLocaleString()} / {service.max_quantity.toLocaleString()}
                 </TD>
@@ -268,7 +291,8 @@ export default function ServicesManager({
                   </div>
                 </TD>
               </TRow>
-            ))}
+              );
+            })}
           </tbody>
         </Table>
       )}
@@ -394,6 +418,42 @@ export default function ServicesManager({
             onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value }))}
             required
           />
+          <FormField
+            label="Provider cost per 1,000 (₦)"
+            type="number"
+            min={0}
+            placeholder="Leave blank if unknown"
+            value={editForm.providerRate}
+            onChange={(e) => setEditForm((f) => ({ ...f, providerRate: e.target.value }))}
+            hint="What the provider charges you. Independent of the sell price; blank clears it."
+          />
+          {(() => {
+            const priceNum = Number(editForm.price);
+            const costRaw = editForm.providerRate.trim();
+            const costNum = costRaw === "" ? null : Number(costRaw);
+            if (!Number.isFinite(priceNum) || priceNum <= 0 || costNum === null || !Number.isFinite(costNum)) {
+              return null;
+            }
+            const margin = priceNum - costNum;
+            const losing = margin < 0;
+            return (
+              <div className="flex items-center justify-between rounded-md bg-surface-muted px-3.5 py-3 text-sm">
+                <span className="text-ink-soft">Margin per 1,000</span>
+                <span className={losing ? "font-display text-base text-brick-700" : "font-display text-base text-navy-900"}>
+                  {formatNaira(margin)}
+                  {losing && <span className="ml-2 text-xs font-normal text-brick-700">selling at a loss</span>}
+                </span>
+              </div>
+            );
+          })()}
+          {editingService && (
+            <div className="rounded-md border border-surface-border px-3.5 py-3 text-xs text-ink-soft">
+              <p className="font-medium text-ink-muted">Provider mapping</p>
+              <p className="mt-1 capitalize">Provider: {editingService.provider}</p>
+              <p>Service id: {editingService.provider_service_id ?? "—"}</p>
+              <p>Type: {editingService.provider_service_type ?? "—"}</p>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <FormField
               label="Min quantity"
