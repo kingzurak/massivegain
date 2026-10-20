@@ -39,6 +39,8 @@ export interface Service {
   provider_service_id: string | null;
   provider_rate: number | null;
   provider_service_type: string | null;
+  charge_percent: number | null;
+  charge_flat: number | null;
   created_at: string;
   updated_at: string;
 }

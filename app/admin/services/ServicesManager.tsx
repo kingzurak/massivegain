@@ -10,6 +10,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import { Table, THead, TRow, TH, TD } from "@/components/ui/Table";
 import { formatNaira } from "@/lib/utils";
 import type { Category, ServiceWithCategory } from "@/lib/supabase/types";
+import type { GlobalChargeDefaults } from "@/lib/pricing";
 import CategoryManager from "./CategoryManager";
 
 const textareaClass =
@@ -36,9 +37,11 @@ const emptyCreateForm: CreateForm = {
 export default function ServicesManager({
   services,
   categories,
+  defaults,
 }: {
   services: ServiceWithCategory[];
   categories: Category[];
+  defaults: GlobalChargeDefaults;
 }) {
   const router = useRouter();
 
@@ -48,7 +51,15 @@ export default function ServicesManager({
   const [creating, setCreating] = useState(false);
 
   const [editingService, setEditingService] = useState<ServiceWithCategory | null>(null);
-  const [editForm, setEditForm] = useState({ price: "", min: "", max: "", active: true, providerRate: "" });
+  const [editForm, setEditForm] = useState({
+    price: "",
+    min: "",
+    max: "",
+    active: true,
+    providerRate: "",
+    chargePercent: "",
+    chargeFlat: "",
+  });
   const [editError, setEditError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -70,6 +81,8 @@ export default function ServicesManager({
       max: String(service.max_quantity),
       active: service.active,
       providerRate: service.provider_rate != null ? String(service.provider_rate) : "",
+      chargePercent: service.charge_percent != null ? String(service.charge_percent) : "",
+      chargeFlat: service.charge_flat != null ? String(service.charge_flat) : "",
     });
   }
 
@@ -129,13 +142,8 @@ export default function ServicesManager({
     if (!editingService) return;
     setEditError(null);
 
-    const priceNum = Number(editForm.price);
     const minNum = Number(editForm.min);
     const maxNum = Number(editForm.max);
-    if (!priceNum || priceNum <= 0) {
-      setEditError("Enter a price greater than 0.");
-      return;
-    }
     if (!minNum || minNum <= 0) {
       setEditError("Enter a minimum quantity greater than 0.");
       return;
@@ -153,17 +161,41 @@ export default function ServicesManager({
       return;
     }
 
+    // Charge overrides: blank = use the global default.
+    const percentRaw = editForm.chargePercent.trim();
+    const chargePercent = percentRaw === "" ? null : Number(percentRaw);
+    if (chargePercent !== null && (!Number.isFinite(chargePercent) || chargePercent < 0)) {
+      setEditError("Enter a markup of 0 or more, or leave it blank to use the default.");
+      return;
+    }
+    const flatRaw = editForm.chargeFlat.trim();
+    const chargeFlat = flatRaw === "" ? null : Number(flatRaw);
+    if (chargeFlat !== null && (!Number.isFinite(chargeFlat) || chargeFlat < 0)) {
+      setEditError("Enter a flat fee of 0 or more, or leave it blank to use the default.");
+      return;
+    }
+
+    // Price is only sent for services with no provider cost (manual pricing);
+    // otherwise the server derives it from cost + charge.
+    const manualPrice = providerRate == null ? Number(editForm.price) : undefined;
+    if (providerRate == null && (!manualPrice || manualPrice <= 0)) {
+      setEditError("Enter a price greater than 0.");
+      return;
+    }
+
     setSaving(true);
     const res = await fetch("/api/admin/services", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         serviceId: editingService.id,
-        pricePerThousand: priceNum,
         minQuantity: minNum,
         maxQuantity: maxNum,
         active: editForm.active,
         providerRate,
+        chargePercent,
+        chargeFlat,
+        ...(manualPrice !== undefined ? { pricePerThousand: manualPrice } : {}),
       }),
     });
     const json = await res.json().catch(() => null);
@@ -242,6 +274,7 @@ export default function ServicesManager({
               <TH>Price / 1,000</TH>
               <TH>Cost / 1,000</TH>
               <TH>Margin</TH>
+              <TH>Our charge</TH>
               <TH>Min / Max</TH>
               <TH>Status</TH>
               <TH>Action</TH>
@@ -253,6 +286,8 @@ export default function ServicesManager({
                 service.provider_rate != null
                   ? service.price_per_thousand - service.provider_rate
                   : null;
+              const chargePercent = service.charge_percent ?? defaults.percent;
+              const chargeFlat = service.charge_flat ?? defaults.flat;
               return (
               <TRow key={service.id}>
                 <TD className="font-medium">{service.name}</TD>
@@ -264,6 +299,9 @@ export default function ServicesManager({
                 </TD>
                 <TD className={margin != null && margin < 0 ? "font-medium text-brick-700" : ""}>
                   {margin != null ? formatNaira(margin) : "—"}
+                </TD>
+                <TD className="text-xs text-ink-soft">
+                  {service.provider_rate != null ? `${chargePercent}% + ${formatNaira(chargeFlat)}` : "—"}
                 </TD>
                 <TD>
                   {service.min_quantity.toLocaleString()} / {service.max_quantity.toLocaleString()}
@@ -411,39 +449,84 @@ export default function ServicesManager({
         )}
         <form className="flex flex-col gap-4" onSubmit={handleSaveEdit} id="edit-service-form">
           <FormField
-            label="Price per 1,000 (₦)"
-            type="number"
-            min={1}
-            value={editForm.price}
-            onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value }))}
-            required
-          />
-          <FormField
             label="Provider cost per 1,000 (₦)"
             type="number"
             min={0}
             placeholder="Leave blank if unknown"
             value={editForm.providerRate}
             onChange={(e) => setEditForm((f) => ({ ...f, providerRate: e.target.value }))}
-            hint="What the provider charges you. Independent of the sell price; blank clears it."
+            hint="What the provider charges you. Blank means we don't know it — then you price by hand below."
           />
           {(() => {
-            const priceNum = Number(editForm.price);
             const costRaw = editForm.providerRate.trim();
             const costNum = costRaw === "" ? null : Number(costRaw);
-            if (!Number.isFinite(priceNum) || priceNum <= 0 || costNum === null || !Number.isFinite(costNum)) {
-              return null;
-            }
-            const margin = priceNum - costNum;
-            const losing = margin < 0;
+            const hasCost = costNum !== null && Number.isFinite(costNum) && costNum >= 0;
+            const pctRaw = editForm.chargePercent.trim();
+            const pct = pctRaw === "" ? defaults.percent : Number(pctRaw);
+            const flatRaw = editForm.chargeFlat.trim();
+            const flat = flatRaw === "" ? defaults.flat : Number(flatRaw);
+            const pctOk = Number.isFinite(pct) && pct >= 0;
+            const flatOk = Number.isFinite(flat) && flat >= 0;
+
+            const derived =
+              hasCost && pctOk && flatOk
+                ? Math.round((costNum * (1 + pct / 100) + flat) * 100) / 100
+                : null;
+            const margin = derived != null && hasCost ? Math.round((derived - costNum) * 100) / 100 : null;
+
             return (
-              <div className="flex items-center justify-between rounded-md bg-surface-muted px-3.5 py-3 text-sm">
-                <span className="text-ink-soft">Margin per 1,000</span>
-                <span className={losing ? "font-display text-base text-brick-700" : "font-display text-base text-navy-900"}>
-                  {formatNaira(margin)}
-                  {losing && <span className="ml-2 text-xs font-normal text-brick-700">selling at a loss</span>}
-                </span>
-              </div>
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    label="Our markup (%)"
+                    type="number"
+                    min={0}
+                    placeholder={`${defaults.percent}`}
+                    value={editForm.chargePercent}
+                    onChange={(e) => setEditForm((f) => ({ ...f, chargePercent: e.target.value }))}
+                    hint="Blank uses the global default."
+                  />
+                  <FormField
+                    label="Our flat fee (₦/1,000)"
+                    type="number"
+                    min={0}
+                    placeholder={`${defaults.flat}`}
+                    value={editForm.chargeFlat}
+                    onChange={(e) => setEditForm((f) => ({ ...f, chargeFlat: e.target.value }))}
+                    hint="Blank uses the global default."
+                  />
+                </div>
+
+                {hasCost ? (
+                  <>
+                    <div className="flex items-center justify-between rounded-md bg-surface-muted px-3.5 py-3 text-sm">
+                      <span className="text-ink-soft">Price per 1,000 (cost + our charge)</span>
+                      <span className="font-display text-base text-navy-900">
+                        {derived != null ? formatNaira(derived) : "—"}
+                      </span>
+                    </div>
+                    {margin != null && (
+                      <div className="flex items-center justify-between text-xs text-ink-soft">
+                        <span>Our charge — this is what we keep</span>
+                        <span className={margin < 0 ? "font-medium text-brick-700" : "font-medium text-navy-900"}>
+                          {formatNaira(margin)}
+                          {margin < 0 && <span className="ml-2 font-normal text-brick-700">selling at a loss</span>}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <FormField
+                    label="Price per 1,000 (₦)"
+                    type="number"
+                    min={1}
+                    value={editForm.price}
+                    onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value }))}
+                    hint="No provider cost known, so you set the price by hand."
+                    required
+                  />
+                )}
+              </>
             );
           })()}
           {editingService && (

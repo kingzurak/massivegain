@@ -1,14 +1,23 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, badRequest, readJson, writeFailed } from "@/lib/admin/api";
+import {
+  computeSellPrice,
+  globalDefaultsFrom,
+  resolveCharge,
+} from "@/lib/pricing";
 
 export const runtime = "nodejs";
 
 const MAX_DESCRIPTION_LENGTH = 1000;
+const MAX_CHARGE_PERCENT = 1000;
 
-interface ServiceNumbers {
+interface EditableService {
   price_per_thousand: number;
   min_quantity: number;
   max_quantity: number;
+  provider_rate: number | null;
+  charge_percent: number | null;
+  charge_flat: number | null;
 }
 
 /**
@@ -22,6 +31,22 @@ function validateNumbers(price: number, min: number, max: number): string | null
     return "Maximum quantity must be greater than or equal to the minimum.";
   }
   return null;
+}
+
+/**
+ * Reads an optional charge override from the body: undefined = leave as-is,
+ * null/"" = clear back to the global default, otherwise a number >= 0.
+ */
+function readChargeOverride(
+  raw: unknown
+): { ok: true; value: number | null | undefined } | { ok: false; message: string } {
+  if (raw === undefined) return { ok: true, value: undefined };
+  if (raw === null || raw === "") return { ok: true, value: null };
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0) {
+    return { ok: false, message: "Enter a charge of 0 or more, or leave it blank to use the default." };
+  }
+  return { ok: true, value };
 }
 
 /** POST /api/admin/services — create a service. */
@@ -63,19 +88,22 @@ export async function POST(request: Request) {
 }
 
 /**
- * PATCH /api/admin/services — update price/min/max/active/provider cost.
+ * PATCH /api/admin/services — update price/min/max/active/provider cost/charge.
  *
- * Body: { serviceId, pricePerThousand?, minQuantity?, maxQuantity?, active?, providerRate? }
+ * Body (all optional except serviceId):
+ *   { serviceId, pricePerThousand?, minQuantity?, maxQuantity?, active?,
+ *     providerRate?, chargePercent?, chargeFlat? }
  *
  * Partial updates are validated against the stored row, so sending only
  * `active` (the activate/deactivate button) can't accidentally widen a
  * min/max range that was never submitted.
  *
- * `providerRate` is what the provider (bestclout) charges per 1,000, in NGN —
- * captured at import but editable here so an admin can correct a stale or
- * wrong rate. It is deliberately independent of the sell price: editing the
- * cost never rewrites `price_per_thousand`. An explicit `null` (or empty
- * string) clears it, so a service can be reverted to "no known provider cost".
+ * `providerRate` is what the provider charges per 1,000 (NGN); `chargePercent`
+ * and `chargeFlat` are what WE add on top. When a provider cost is known the
+ * sell price is DERIVED as cost * (1 + percent/100) + flat (per-service value,
+ * else the global default) — a hand-sent `pricePerThousand` is ignored for
+ * such services, which is what guarantees we never sell below cost. A service
+ * with no provider cost keeps a hand-entered price and ignores the charge.
  */
 export async function PATCH(request: Request) {
   const guard = await requireAdmin();
@@ -88,17 +116,60 @@ export async function PATCH(request: Request) {
 
   const { data: existing, error: fetchError } = await supabase
     .from("services")
-    .select("price_per_thousand, min_quantity, max_quantity")
+    .select("price_per_thousand, min_quantity, max_quantity, provider_rate, charge_percent, charge_flat")
     .eq("id", serviceId)
-    .maybeSingle<ServiceNumbers>();
+    .maybeSingle<EditableService>();
 
   if (fetchError) return writeFailed("service lookup", fetchError.message);
   if (!existing) return badRequest("That service couldn't be found.");
 
-  const price =
-    body.pricePerThousand !== undefined ? Number(body.pricePerThousand) : existing.price_per_thousand;
   const min = body.minQuantity !== undefined ? Number(body.minQuantity) : existing.min_quantity;
   const max = body.maxQuantity !== undefined ? Number(body.maxQuantity) : existing.max_quantity;
+
+  // Resolve provider cost and charge overrides from the body, falling back to
+  // the stored row when a key isn't present.
+  let providerRate = existing.provider_rate;
+  if (body.providerRate !== undefined) {
+    const rate = body.providerRate;
+    if (rate === null || rate === "") {
+      providerRate = null;
+    } else {
+      const value = Number(rate);
+      if (!Number.isFinite(value) || value < 0) {
+        return badRequest("Enter a provider cost of 0 or more, or leave it blank.");
+      }
+      providerRate = value;
+    }
+  }
+
+  const percentRead = readChargeOverride(body.chargePercent);
+  if (!percentRead.ok) return badRequest(percentRead.message);
+  const flatRead = readChargeOverride(body.chargeFlat);
+  if (!flatRead.ok) return badRequest(flatRead.message);
+
+  const chargePercent = percentRead.value === undefined ? existing.charge_percent : percentRead.value;
+  const chargeFlat = flatRead.value === undefined ? existing.charge_flat : flatRead.value;
+
+  if (chargePercent != null && chargePercent > MAX_CHARGE_PERCENT) {
+    return badRequest(`Enter a markup between 0 and ${MAX_CHARGE_PERCENT}.`);
+  }
+
+  const { data: settings } = await supabase
+    .from("system_settings")
+    .select("key, value")
+    .in("key", ["bestclout_markup_percent", "default_charge_flat"])
+    .returns<{ key: string; value: string }[]>();
+  const defaults = globalDefaultsFrom(settings);
+
+  // Price: derived from cost + charge when the cost is known, else manual.
+  const derived = computeSellPrice({ providerRate, chargePercent, chargeFlat }, defaults);
+  let price: number;
+  if (derived != null) {
+    price = derived;
+  } else {
+    price =
+      body.pricePerThousand !== undefined ? Number(body.pricePerThousand) : existing.price_per_thousand;
+  }
 
   const numbersError = validateNumbers(price, min, max);
   if (numbersError) return badRequest(numbersError);
@@ -107,26 +178,23 @@ export async function PATCH(request: Request) {
     price_per_thousand: price,
     min_quantity: min,
     max_quantity: max,
+    provider_rate: providerRate,
+    charge_percent: chargePercent,
+    charge_flat: chargeFlat,
   };
   if (typeof body.active === "boolean") update.active = body.active;
-
-  // Only touched when the key is present, so the activate/deactivate button
-  // (which sends only `active`) can never wipe an existing provider cost.
-  if (body.providerRate !== undefined) {
-    const rate = body.providerRate;
-    if (rate === null || rate === "") {
-      update.provider_rate = null;
-    } else {
-      const value = Number(rate);
-      if (!Number.isFinite(value) || value < 0) {
-        return badRequest("Enter a provider cost of 0 or more, or leave it blank.");
-      }
-      update.provider_rate = value;
-    }
-  }
 
   const { error } = await supabase.from("services").update(update).eq("id", serviceId);
   if (error) return writeFailed("service update", error.message);
 
-  return NextResponse.json({ ok: true });
+  // Echo back the resolved numbers so the UI can confirm what was stored.
+  const charge = derived != null ? resolveCharge({ providerRate, chargePercent, chargeFlat }, defaults) : null;
+  return NextResponse.json({
+    ok: true,
+    price,
+    providerCost: providerRate,
+    chargePercent: charge?.percent ?? chargePercent,
+    chargeFlat: charge?.flat ?? chargeFlat,
+    margin: providerRate != null ? Math.round((price - providerRate) * 100) / 100 : null,
+  });
 }

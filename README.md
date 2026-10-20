@@ -78,11 +78,16 @@ NGN, so there is no currency conversion; the markup lives in
 `system_settings.bestclout_markup_percent`.
 
 Each imported service keeps `provider_rate` — what bestclout charges per
-1,000, in NGN — and `price_per_thousand` (the sell price) independently.
-The cost is captured at import but an admin can correct it per service in
-`/admin/services` (Edit → **Provider cost per 1,000**), which is also where
-the cost and margin columns make a stale or wrong rate obvious. Editing the
-cost never rewrites the sell price, and the corrected cost is what gets
+1,000, in NGN — and `price_per_thousand` (the sell price). The sell price is
+**derived**: cost × (1 + markup%) + flat fee, where the markup and flat fee
+are each per-service (`services.charge_percent` / `services.charge_flat`) or,
+when unset, the global defaults (`bestclout_markup_percent` /
+`default_charge_flat` in `system_settings`). So an order can never be priced
+below cost by accident. Admins set the cost and the charge per service in
+`/admin/services` (Edit), and the global defaults in `/admin/providers`;
+the cost, charge and margin columns make a stale rate obvious. The customer
+only ever sees the final price. Services with no known cost (manually
+fulfilled) keep a hand-entered price. The corrected cost is what gets
 snapshotted onto `orders.provider_cost` at checkout.
 
 ## Environment variables
