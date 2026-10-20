@@ -79,7 +79,7 @@ on conflict (key) do nothing;
 --    supabase/migrations/README.md). The tracking migration is recorded too
 --    because step 0 above has now provided the same ledger it would have.
 insert into supabase_migrations.applied_migrations (version, name) values
-  ('0000_baseline', 'supabase/schema.sql'),
+  ('0000_baseline', 'supabase/schema.sql-migration-tracking-baseline'),
   ('1', 'migration_tracking'),
   ('2', 'bestclout')
 on conflict (version) do nothing;
