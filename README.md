@@ -77,6 +77,14 @@ services go live at your markup, and only Default-type services auto-fulfil. bes
 NGN, so there is no currency conversion; the markup lives in
 `system_settings.bestclout_markup_percent`.
 
+Each imported service keeps `provider_rate` — what bestclout charges per
+1,000, in NGN — and `price_per_thousand` (the sell price) independently.
+The cost is captured at import but an admin can correct it per service in
+`/admin/services` (Edit → **Provider cost per 1,000**), which is also where
+the cost and margin columns make a stale or wrong rate obvious. Editing the
+cost never rewrites the sell price, and the corrected cost is what gets
+snapshotted onto `orders.provider_cost` at checkout.
+
 ## Environment variables
 
 See `.env.example` for the full list. `DEPLOYMENT.md` documents each

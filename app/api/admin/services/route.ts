@@ -63,13 +63,19 @@ export async function POST(request: Request) {
 }
 
 /**
- * PATCH /api/admin/services — update price/min/max/active.
+ * PATCH /api/admin/services — update price/min/max/active/provider cost.
  *
- * Body: { serviceId, pricePerThousand?, minQuantity?, maxQuantity?, active? }
+ * Body: { serviceId, pricePerThousand?, minQuantity?, maxQuantity?, active?, providerRate? }
  *
  * Partial updates are validated against the stored row, so sending only
  * `active` (the activate/deactivate button) can't accidentally widen a
  * min/max range that was never submitted.
+ *
+ * `providerRate` is what the provider (bestclout) charges per 1,000, in NGN —
+ * captured at import but editable here so an admin can correct a stale or
+ * wrong rate. It is deliberately independent of the sell price: editing the
+ * cost never rewrites `price_per_thousand`. An explicit `null` (or empty
+ * string) clears it, so a service can be reverted to "no known provider cost".
  */
 export async function PATCH(request: Request) {
   const guard = await requireAdmin();
@@ -97,12 +103,27 @@ export async function PATCH(request: Request) {
   const numbersError = validateNumbers(price, min, max);
   if (numbersError) return badRequest(numbersError);
 
-  const update: Record<string, number | boolean> = {
+  const update: Record<string, number | boolean | string | null> = {
     price_per_thousand: price,
     min_quantity: min,
     max_quantity: max,
   };
   if (typeof body.active === "boolean") update.active = body.active;
+
+  // Only touched when the key is present, so the activate/deactivate button
+  // (which sends only `active`) can never wipe an existing provider cost.
+  if (body.providerRate !== undefined) {
+    const rate = body.providerRate;
+    if (rate === null || rate === "") {
+      update.provider_rate = null;
+    } else {
+      const value = Number(rate);
+      if (!Number.isFinite(value) || value < 0) {
+        return badRequest("Enter a provider cost of 0 or more, or leave it blank.");
+      }
+      update.provider_rate = value;
+    }
+  }
 
   const { error } = await supabase.from("services").update(update).eq("id", serviceId);
   if (error) return writeFailed("service update", error.message);
