@@ -100,6 +100,6 @@ provider's NGN rate plus the markup in `system_settings.bestclout_markup_percent
 
 - [ ] Set `BESTCLOUT_API_KEY` and `CRON_SECRET` in Vercel (Production; a *different* `CRON_SECRET` for Preview/Development if you set one there)
 - [ ] Confirm the `vercel.json` cron is registered — Project → **Cron Jobs** should list `/api/cron/sync-orders`. The checked-in schedule is daily (`0 3 * * *`) because Hobby plans restrict cron frequency; raise it on a Pro plan if you want faster status updates. The admin **Providers → Sync order statuses** button works regardless.
-- [ ] In `/admin/providers`, confirm the balance reads (it's in NGN) and import the catalogue. **Imported services land inactive** — review prices, then activate them in `/admin/services`.
+- [ ] In `/admin/providers`, confirm the balance reads (it's in NGN) and import the catalogue. Imported services go live immediately at the configured markup; adjust prices anytime in `/admin/services`.
 - [ ] Only **Default**-type bestclout services auto-fulfil. Custom Comments / Comment Likes / Comment Replies / Package services are never imported or sent upstream — fulfil those by hand in `/admin/orders`.
 - [ ] When bestclout cancels an order, the sync flags it **“refund due”** in `/admin/orders`. It does **not** auto-refund (the refund function requires an admin session) — open the order and cancel it there to refund the customer.

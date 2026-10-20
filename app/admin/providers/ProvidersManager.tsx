@@ -90,7 +90,7 @@ export default function ProvidersManager({
         `Imported ${result.imported} service${result.imported === 1 ? "" : "s"}` +
           (result.skipped ? `, skipped ${result.skipped} already mapped` : "") +
           (result.categoriesCreated ? `, created ${result.categoriesCreated} categor${result.categoriesCreated === 1 ? "y" : "ies"}` : "") +
-          `. They're inactive until you enable them in Services.`
+          `. They're live and orderable now.`
       );
     }
     router.refresh();
@@ -157,8 +157,8 @@ export default function ProvidersManager({
             {services.length} mapped service{services.length === 1 ? "" : "s"}
           </p>
           <p className="mt-3 text-xs text-ink-soft">
-            Only Default-type bestclout services are imported and auto-fulfilled. Imports land inactive
-            so you can adjust prices before customers order.
+            Only Default-type bestclout services are imported and auto-fulfilled. Imports go live
+            immediately at your markup; adjust prices anytime in Services.
           </p>
         </Card>
       </div>

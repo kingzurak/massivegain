@@ -72,8 +72,8 @@ API routes (server-only, all rate limited):
 Services are fulfilled by a provider chosen per-service (`services.provider`).
 `manual` does nothing and leaves the order for an admin; `bestclout` submits
 Default-type services to [bestclout.com](https://bestclout.com) and polls
-their status. Map the catalogue from `/admin/providers` — imports land
-inactive, and only Default-type services auto-fulfil. bestclout bills in
+their status. Map the catalogue from `/admin/providers` — imported Default
+services go live at your markup, and only Default-type services auto-fulfil. bestclout bills in
 NGN, so there is no currency conversion; the markup lives in
 `system_settings.bestclout_markup_percent`.
 

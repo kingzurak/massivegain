@@ -38,9 +38,10 @@ function priceWithMarkup(rate: number, markupPercent: number): number {
  *
  * Only Default-type services are imported: Custom Comments / Comment Likes /
  * Comment Replies need customer-supplied text we don't collect, and Package
- * services aren't per-1,000 work. Everything lands INACTIVE so an admin must
- * review pricing before customers can order it. Services already mapped to a
- * provider service id are skipped, so re-running only adds what's new.
+ * services aren't per-1,000 work. Everything lands ACTIVE at the provider rate
+ * plus the configured markup, so the catalogue is orderable immediately.
+ * Services already mapped to a provider service id are skipped, so re-running
+ * only adds what's new.
  */
 export async function POST(request: Request) {
   const guard = await requireAdmin();
@@ -109,7 +110,7 @@ export async function POST(request: Request) {
     price_per_thousand: priceWithMarkup(s.rate, markup),
     min_quantity: s.min,
     max_quantity: s.max,
-    active: false,
+    active: true,
     provider: "bestclout",
     provider_service_id: s.service,
     provider_rate: s.rate,
