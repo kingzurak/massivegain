@@ -44,12 +44,27 @@ URLs from `NEXT_PUBLIC_SITE_URL`, so:
   the pages themselves already require auth, this just keeps them out of
   indexes.
 
-## 6. Rollback plan — know this *before* you need it
+## 6. Database migrations actually applied
+
+The code deploy and the database are two separate steps — a green Vercel
+deploy says nothing about whether the schema matches. After any deploy that
+shipped a file under `supabase/migrations/`:
+
+- [ ] Supabase SQL Editor → run
+  `select version, name, applied_at from supabase_migrations.applied_migrations order by version;`
+  — it should list every migration file, including the newest one.
+- [ ] Paste each migration file that is **missing** from that list, lowest
+  number first, one file per query (see `supabase/migrations/README.md`).
+- [ ] Run `supabase/verify.sql` (read only) and check each result set against
+  its "expected" note — grants, the single 5-argument `place_order`, RLS on
+  every table, the `guard_order_integrity` trigger, and the applied list.
+
+## 7. Rollback plan — know this *before* you need it
 
 - [ ] **Code**: Vercel keeps every deployment — Project → Deployments → pick a previous one → "Promote to Production" rolls back instantly, no rebuild needed.
 - [ ] **Database is NOT automatically rolled back with it.** If a deploy that included a schema change causes a problem, rolling back the Vercel deployment reverts the *code* but not the *database* — the old code would now be running against a newer schema than it expects. Run `select version, name, applied_at from supabase_migrations.applied_migrations order by version;` to see exactly which migrations this database has, then check the matching files under `supabase/migrations/` (and the baseline `supabase/schema.sql`) before deciding what needs reverting — rarely as simple as a single `DROP`, and never edit an already-applied migration file, add a new one.
 
-## 7. Ongoing — what to periodically check, not just once
+## 8. Ongoing — what to periodically check, not just once
 
 - [ ] **Supabase dashboard → Usage** — database size, API requests, auth users — against your plan's limits, especially once real traffic starts
 - [ ] **Paystack dashboard → Transactions** — periodically reconcile against your own `transactions` table (`select sum(amount) from transactions where type = 'funding' and status = 'success';`) to catch anything that settled on Paystack's side but didn't make it into your database
@@ -58,11 +73,11 @@ URLs from `NEXT_PUBLIC_SITE_URL`, so:
 - [ ] **Orders flagged “refund due”** (`/admin/orders`) — the sync flags these when bestclout cancels an order, but refunding the customer is still an admin action
 - [ ] **Vercel → Cron Jobs** — confirm `/api/cron/sync-orders` is running (and succeeding) on its schedule
 
-## 8. Launch sign-off
+## 9. Launch sign-off
 
 All three documents together are the full Milestone 10 deliverable:
 - [ ] `DEPLOYMENT.md` — every environment variable correctly set in Vercel
 - [ ] `PREFLIGHT.md` — all 10 flows walked through and verified
-- [ ] `POST-DEPLOY.md` (this file) — sections 1–3 above completed on the real production URL
+- [ ] `POST-DEPLOY.md` (this file) — sections 1–3 completed on the real production URL, section 6 confirmed against the database
 
 Once all three are checked off, the app is ready to announce.
