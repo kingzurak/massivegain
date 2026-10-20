@@ -1,4 +1,4 @@
--- 20261019000000_bestclout
+-- 2_bestclout
 --
 -- Wires the app to bestclout.com as a real fulfilment provider (the first
 -- one after the built-in `manual` stub).
@@ -15,11 +15,11 @@
 
 begin;
 
--- 0. The migration ledger is normally created by
---    20261019000000_migration_tracking.sql, but this file is written to be
---    safe to paste on its own: without the ledger, the self-record at the
---    bottom would error and roll back every change above it. Re-creating it
---    here is idempotent (same DDL and grants as the tracking migration).
+-- 0. The migration ledger is normally created by 1_migration_tracking.sql,
+--    but this file is written to be safe to paste on its own: without the
+--    ledger, the self-record at the bottom would error and roll back every
+--    change above it. Re-creating it here is idempotent (same DDL and grants
+--    as the tracking migration).
 create schema if not exists supabase_migrations;
 revoke all on schema supabase_migrations from public, anon, authenticated;
 
@@ -78,13 +78,10 @@ on conflict (key) do nothing;
 -- 4. Record the baseline and this migration (convention — see
 --    supabase/migrations/README.md). The tracking migration is recorded too
 --    because step 0 above has now provided the same ledger it would have.
---    This file shares the 20261019000000 timestamp with the tracking
---    migration, so it records the full filename stem as its version to keep
---    the ledger's primary key unique.
 insert into supabase_migrations.applied_migrations (version, name) values
-  ('0000_baseline', 'supabase/schema.sql'),
-  ('20261019000000', 'migration_tracking'),
-  ('20261019000000_bestclout', 'bestclout')
+  ('0000_baseline', 'supabase/schema.sql-migration-tracking-baseline'),
+  ('1', 'migration_tracking'),
+  ('2', 'bestclout')
 on conflict (version) do nothing;
 
 commit;

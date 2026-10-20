@@ -11,13 +11,15 @@ changes any given project already has.
 ## Naming
 
 ```
-YYYYMMDDHHMMSS_short_description.sql
+<N>_short_description.sql
 ```
 
-e.g. `20261103120000_add_batch_status_column.sql`. The timestamp prefix keeps
-the files in the order they must run and matches the layout the Supabase CLI
-expects, so this directory can be driven by `supabase db push` later without
-renaming anything.
+e.g. `1_migration_tracking.sql`, `2_bestclout.sql`, `3_add_batch_status_column.sql`.
+
+Files are applied in **ascending numeric order of `<N>`** (1, 2, 3 … — not
+textual filename order, so `10_...` correctly comes after `9_...`). This is a
+deliberate tradeoff: short, readable names over Supabase-CLI-compatible
+timestamp names. Applying is manual in the SQL editor, as described below.
 
 ## Rules
 
@@ -30,8 +32,8 @@ renaming anything.
 3. **One transaction.** Wrap the body in `begin; ... commit;` so a failure
    halfway through leaves nothing applied.
 4. **Record itself.** End with an insert into
-   `supabase_migrations.applied_migrations` for its own version. The table
-   is created by `20261019000000_migration_tracking.sql`.
+   `supabase_migrations.applied_migrations` for its own version (the number
+   in its filename). The table is created by `1_migration_tracking.sql`.
 5. **Schema only.** Functions, tables, policies, grants — never customer
    data, never secrets.
 
@@ -41,15 +43,15 @@ For a project that already has the baseline (i.e. `schema.sql` has been run):
 
 1. Open the Supabase SQL editor.
 2. If the tracking table doesn't exist yet, run
-   `20261019000000_migration_tracking.sql` first — it creates the table and
-   records the baseline as applied.
+   `1_migration_tracking.sql` first — it creates the table and records the
+   baseline as applied.
 3. List what's already applied:
    `select version from supabase_migrations.applied_migrations order by version;`
-4. Paste every file whose timestamp is **not** in that list, oldest first,
+4. Paste every file whose number is **not** in that list, lowest first,
    one file per query.
 
 For a brand-new project: run `supabase/schema.sql`, then
-`20261019000000_migration_tracking.sql`, then any later files.
+`1_migration_tracking.sql`, then any later files.
 
 ## Why this exists
 

@@ -1327,6 +1327,10 @@ $$;
 --     - status can never transition to or from 'cancelled' directly;
 --       only cancel_order_with_refund() may do that, via a transaction-
 --       local flag it sets right before its own update.
+--
+--     NOTE: the current definition lives in migration 3_order_integrity.sql,
+--     which also makes 'completed' terminal. This baseline block is kept for
+--     fresh setups; re-run that migration to pick up later rules.
 create or replace function public.guard_order_integrity()
 returns trigger
 language plpgsql

@@ -1,4 +1,4 @@
--- 20261019000000_migration_tracking
+-- 1_migration_tracking
 --
 -- Establishes the migration ledger and records the baseline as applied.
 -- Prerequisite: supabase/schema.sql has already been run against this
@@ -28,15 +28,14 @@ create table if not exists supabase_migrations.applied_migrations (
 alter table supabase_migrations.applied_migrations enable row level security;
 
 -- The baseline is always applied before any migration file is, so record it
--- now. This row also exists so that a later switch to the Supabase CLI can
--- see that the schema came in as a baseline rather than as numbered files.
+-- now under a label that can't collide with a numbered migration.
 insert into supabase_migrations.applied_migrations (version, name)
 values ('0000_baseline', 'supabase/schema.sql')
 on conflict (version) do nothing;
 
 -- This migration records itself last, per the convention in README.md.
 insert into supabase_migrations.applied_migrations (version, name)
-values ('20261019000000', 'migration_tracking')
+values ('1', 'migration_tracking')
 on conflict (version) do nothing;
 
 commit;
