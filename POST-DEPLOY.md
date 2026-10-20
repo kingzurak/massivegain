@@ -70,7 +70,7 @@ shipped a file under `supabase/migrations/`:
 - [ ] **Paystack dashboard → Transactions** — periodically reconcile against your own `transactions` table (`select sum(amount) from transactions where type = 'funding' and status = 'success';`) to catch anything that settled on Paystack's side but didn't make it into your database
 - [ ] **Upstash dashboard** — request volume against your plan's quota
 - [ ] **bestclout balance** (`/admin/providers`) — orders fail upstream when the provider account runs dry; top it up before that
-- [ ] **bestclout rates** — a provider rate can change upstream without you noticing, and **Import only adds new services** (it skips ones already mapped), so it never refreshes an existing price. Check the Cost and Margin columns in `/admin/services`; correct a stale rate via **Edit → Provider cost per 1,000**, then adjust the sell price if the margin drifted.
+- [ ] **bestclout rates & charge** — a provider rate can change upstream without you noticing, and **Import only adds new services** (it skips ones already mapped), so it never refreshes an existing price. Check the Cost, Our charge and Margin columns in `/admin/services`; correct a stale rate or adjust our charge via **Edit** (cost, markup %, flat fee), then save. The sell price re-derives automatically from cost + charge.
 - [ ] **Orders flagged “refund due”** (`/admin/orders`) — the sync flags these when bestclout cancels an order, but refunding the customer is still an admin action
 - [ ] **Vercel → Cron Jobs** — confirm `/api/cron/sync-orders` is running (and succeeding) on its schedule
 

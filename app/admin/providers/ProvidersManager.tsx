@@ -29,43 +29,51 @@ export default function ProvidersManager({
   balance,
   balanceError,
   markup,
+  chargeFlat,
   services,
 }: {
   balance: { balance: number; currency: string } | null;
   balanceError: string | null;
   markup: string;
+  chargeFlat: string;
   services: Service[];
 }) {
   const router = useRouter();
 
   const [markupValue, setMarkupValue] = useState(markup);
-  const [savingMarkup, setSavingMarkup] = useState(false);
+  const [flatValue, setFlatValue] = useState(chargeFlat);
+  const [savingCharge, setSavingCharge] = useState(false);
   const [importing, setImporting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  async function saveMarkup() {
+  async function saveCharge() {
     setError(null);
     setNotice(null);
-    const value = Number(markupValue);
-    if (!Number.isFinite(value) || value < 0 || value > 1000) {
+    const percent = Number(markupValue);
+    if (!Number.isFinite(percent) || percent < 0 || percent > 1000) {
       setError("Enter a markup between 0 and 1000.");
       return;
     }
-    setSavingMarkup(true);
+    const flat = Number(flatValue);
+    if (!Number.isFinite(flat) || flat < 0) {
+      setError("Enter a flat fee of 0 or more.");
+      return;
+    }
+    setSavingCharge(true);
     const res = await fetch("/api/admin/providers", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markupPercent: value }),
+      body: JSON.stringify({ markupPercent: percent, chargeFlat: flat }),
     });
     const json = await res.json().catch(() => null);
-    setSavingMarkup(false);
+    setSavingCharge(false);
     if (!res.ok) {
-      setError(json?.error ?? "Couldn't save the markup.");
+      setError(json?.error ?? "Couldn't save the default charge.");
       return;
     }
-    setNotice(`Markup saved at ${value}%.`);
+    setNotice(`Default charge saved: ${percent}% + ${formatNaira(flat)} per 1,000.`);
     router.refresh();
   }
 
@@ -158,16 +166,17 @@ export default function ProvidersManager({
           </p>
           <p className="mt-3 text-xs text-ink-soft">
             Only Default-type bestclout services are imported and auto-fulfilled. Imports go live
-            immediately at your markup; adjust prices anytime in Services.
+            immediately at your default charge; adjust cost, charge and prices anytime in Services.
           </p>
         </Card>
       </div>
 
       <Card>
-        <p className="text-sm font-medium text-ink">Markup &amp; import</p>
+        <p className="text-sm font-medium text-ink">Default charge &amp; import</p>
         <p className="mt-1 text-xs text-ink-soft">
-          Your selling price is the provider&apos;s NGN rate plus this markup, rounded to the kobo. Changing
-          the markup does not reprice services already imported — edit those in Services.
+          Our charge is added to the provider&apos;s NGN cost to set the price: cost &times; (1 + markup) + flat,
+          rounded to the kobo. A service can override either part in Services. Changing this does not reprice
+          services already imported — edit those in Services.
         </p>
         <div className="mt-4 flex flex-wrap items-end gap-2">
           <FormField
@@ -178,10 +187,19 @@ export default function ProvidersManager({
             step="1"
             value={markupValue}
             onChange={(e) => setMarkupValue(e.target.value)}
+            className="w-28"
+          />
+          <FormField
+            label="Flat fee (₦/1,000)"
+            type="number"
+            min={0}
+            step="1"
+            value={flatValue}
+            onChange={(e) => setFlatValue(e.target.value)}
             className="w-32"
           />
-          <Button variant="outline" onClick={saveMarkup} disabled={savingMarkup}>
-            {savingMarkup ? "Saving…" : "Save markup"}
+          <Button variant="outline" onClick={saveCharge} disabled={savingCharge}>
+            {savingCharge ? "Saving…" : "Save default"}
           </Button>
           <Button onClick={runImport} disabled={importing}>
             {importing ? "Importing…" : "Import new services"}

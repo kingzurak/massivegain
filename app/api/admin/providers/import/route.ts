@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, badRequest, readJson, writeFailed } from "@/lib/admin/api";
 import { getCatalogue } from "@/lib/providers/bestclout";
+import { globalDefaultsFrom } from "@/lib/pricing";
 import type { Category, Service } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
@@ -39,7 +40,7 @@ function priceWithMarkup(rate: number, markupPercent: number): number {
  * Only Default-type services are imported: Custom Comments / Comment Likes /
  * Comment Replies need customer-supplied text we don't collect, and Package
  * services aren't per-1,000 work. Everything lands ACTIVE at the provider rate
- * plus the configured markup, so the catalogue is orderable immediately.
+ * plus the configured charge, so the catalogue is orderable immediately.
  * Services already mapped to a provider service id are skipped, so re-running
  * only adds what's new.
  */
@@ -62,6 +63,14 @@ export async function POST(request: Request) {
   if (!Number.isFinite(markup) || markup < 0 || markup > MAX_MARKUP_PERCENT) {
     return badRequest(`Enter a markup between 0 and ${MAX_MARKUP_PERCENT}.`);
   }
+
+  // The flat fee (if any) applies on top of the markup, same as at checkout.
+  const { data: settingRows } = await supabase
+    .from("system_settings")
+    .select("key, value")
+    .in("key", ["bestclout_markup_percent", "default_charge_flat"])
+    .returns<{ key: string; value: string }[]>();
+  const flat = globalDefaultsFrom(settingRows).flat;
 
   let catalogue;
   try {
@@ -107,7 +116,7 @@ export async function POST(request: Request) {
     name: cleanLabel(s.name),
     category_id: categoryIdByName.get(categoryLabel(s.category)) as string,
     description: "",
-    price_per_thousand: priceWithMarkup(s.rate, markup),
+    price_per_thousand: Math.round((priceWithMarkup(s.rate, markup) + flat) * 100) / 100,
     min_quantity: s.min,
     max_quantity: s.max,
     active: true,

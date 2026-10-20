@@ -2,6 +2,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import ProvidersManager from "./ProvidersManager";
 import { createClient } from "@/lib/supabase/server";
 import { getBalance } from "@/lib/providers/bestclout";
+import { globalDefaultsFrom } from "@/lib/pricing";
 import type { Service } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminProvidersPage() {
   const supabase = createClient();
 
-  const [{ data: services }, { data: setting }] = await Promise.all([
+  const [{ data: services }, { data: settings }] = await Promise.all([
     supabase
       .from("services")
       .select("*")
@@ -18,10 +19,12 @@ export default async function AdminProvidersPage() {
       .returns<Service[]>(),
     supabase
       .from("system_settings")
-      .select("value")
-      .eq("key", "bestclout_markup_percent")
-      .maybeSingle<{ value: string }>(),
+      .select("key, value")
+      .in("key", ["bestclout_markup_percent", "default_charge_flat"])
+      .returns<{ key: string; value: string }[]>(),
   ]);
+
+  const defaults = globalDefaultsFrom(settings);
 
   // Reaching bestclout is best-effort: an unset key or an outage should not
   // stop the admin from managing the mapping, so the error is shown inline.
@@ -42,7 +45,8 @@ export default async function AdminProvidersPage() {
       <ProvidersManager
         balance={balance}
         balanceError={balanceError}
-        markup={setting?.value ?? "30"}
+        markup={String(defaults.percent)}
+        chargeFlat={String(defaults.flat)}
         services={services ?? []}
       />
     </>
